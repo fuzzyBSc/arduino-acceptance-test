@@ -16,16 +16,16 @@ const int digitalPinCount = 14;
 // How many analogue pins do you have?
 const int analoguePinCount = 8;
 
-// Test pins 0-13 for digital out functionality
+// Test pins 2-13 for digital out functionality
 TestStatus digitalOutPins[] = {
-  YES, YES, YES, YES, YES,
+  NO, NO, YES, YES, YES,
   YES, YES, YES, YES, YES,
   YES, YES, YES, YES
 };
 
-// Test pins 0-13 for digital in functionality
+// Test pins 2-13 for digital in functionality
 TestStatus digitalInPins[] = {
-  YES, YES, YES, YES, YES,
+  NO, NO, YES, YES, YES,
   YES, YES, YES, YES, YES,
   YES, YES, YES, YES
 };
@@ -169,9 +169,9 @@ void testInterrupt(int pin)
   if (interruptPins[pin] == YES)
   {
     int pass = true;
-    Serial.print("Interrupt test: Touch pin ");
+    Serial.print("Interrupt test: Touch pin D");
     Serial.print(pin);
-    Serial.println("to 5V. \"s\" to skip");
+    Serial.println(" to 5V. \"s\" to skip");
     pass = pass && testInterrupt(pin, CHANGE);
     Serial.println("Now to ground, then 5V again");
     pass = pass && testInterrupt(pin, RISING);
@@ -222,9 +222,9 @@ void testDigitalIn(int pin)
     // Attach the pull-up resistor
     pinMode(pin, INPUT_PULLUP);
     int pass = true;
-    Serial.print("Digital In test: Touch pin ");
+    Serial.print("Digital In test: Touch pin D");
     Serial.print(pin);
-    Serial.println("to ground. \"s\" to skip");
+    Serial.println(" to ground. \"s\" to skip");
     pass = pass && testDigitalIn(pin, LOW);
     Serial.println("Now release or touch to 3.3V");
     pass = pass && testDigitalIn(pin, HIGH);
@@ -244,7 +244,7 @@ boolean testAnalogueIn(int pin, int expectedValue, int expectedError)
   int last = 4096;
   for (;;)
   {
-    boolean value = analogRead(pin);
+    int value = analogRead(pin);
     int delta = abs(value - last);
     if (delta > expectedError)
     {
@@ -254,9 +254,14 @@ boolean testAnalogueIn(int pin, int expectedValue, int expectedError)
     int error = abs(value - expectedValue);
     if (error < expectedError)
     {
-      Serial.println(value);
       Serial.print("Expected ");
       Serial.println(expectedValue);
+      Serial.print("Got ");
+      Serial.println(value);
+      if (expectedValue != value)
+      {
+        Serial.println("Close enough");
+      }
       pass = true;
       break;
     }
@@ -272,14 +277,18 @@ void testAnalogueIn(int pin)
   if (analogueInPins[pin] == YES)
   {
     int pass = true;
-    Serial.print("Analogue In test: Touch pin ");
+    Serial.print("Analogue In test: Touch pin A");
     Serial.print(pin);
-    Serial.println("to ground. \"s\" to skip");
-    pass = pass && testAnalogueIn(pin, 0, 102);
-    Serial.println("Now touch to 5V");
-    pass = pass && testAnalogueIn(pin, 1023, 102);
-    Serial.println("Now touch to 3.3V");
-    pass = pass && testAnalogueIn(pin, 1551, 102);
+    Serial.println(" to ground. \"s\" to skip");
+    pass = pass && testAnalogueIn(pin, 0, 1024 / 5);
+    Serial.print("Now touch pin A");
+    Serial.print(pin);
+    Serial.println(" to 5V");
+    pass = pass && testAnalogueIn(pin, 1023, 1024 / 5);
+    Serial.print("Now touch pin A");
+    Serial.print(pin);
+    Serial.println(" to 3.3V");
+    pass = pass && testAnalogueIn(pin, 675, 1024 / 5);
     if (pass)
     {
       analogueInPins[pin] = PASS;
@@ -296,8 +305,14 @@ void testDigitalOut(int pin)
   if (digitalOutPins[pin] == YES)
   {
     // Activate output on this pin for the duration of the test only
-    pinMode(pin, OUTPUT);
-    Serial.print("Attach your current-limited LED to pin ");
+    for (int ii=0; ii<digitalPinCount; ++ii)
+    {
+      if (digitalOutPins[pin] == YES)
+      {
+        pinMode(ii, OUTPUT);
+      }
+    }
+    Serial.print("Attach your current-limited LED to pin D");
     Serial.print(pin);
     Serial.println(". Is it blinking?");
     int lastChange_ms = 0;
@@ -310,7 +325,13 @@ void testDigitalOut(int pin)
       {
         lastChange_ms = now_ms;
         lastState = !lastState;
-        digitalWrite(pin, lastState);
+        for (int ii=0; ii<digitalPinCount; ++ii)
+        {
+          if (digitalOutPins[pin] == YES)
+          {
+            digitalWrite(ii, lastState ? HIGH : LOW);
+          }
+        }
       }
       pass = readBoolean(false);
       if (pass != 2)
@@ -318,7 +339,13 @@ void testDigitalOut(int pin)
         break;
       }
     }
-    pinMode(pin, INPUT);
+    for (int ii=0; ii<digitalPinCount; ++ii)
+    {
+      if (digitalOutPins[pin] == YES)
+      {
+        pinMode(ii, INPUT);
+      }
+    }
     if (pass)
     {
       digitalOutPins[pin] = PASS;
@@ -330,9 +357,15 @@ void testPWM(int pin)
 {
   if (pwmPins[pin] == YES)
   {
-    // Activate output on this pin for the duration of the test only
-    pinMode(pin, OUTPUT);
-    Serial.print("Attach your current-limited LED to pin ");
+    // Activate output pins for the duration of the test only
+    for (int ii=0; ii<digitalPinCount; ++ii)
+    {
+      if (pwmPins[pin] == YES)
+      {
+        pinMode(ii, OUTPUT);
+      }
+    }
+    Serial.print("Attach your current-limited LED to pin D");
     Serial.print(pin);
     Serial.println(". Is it breathing?");
     int lastChange_ms = millis();
@@ -341,7 +374,13 @@ void testPWM(int pin)
     int pass = 2;
     for (;;)
     {
-      analogWrite(pin, level);
+      for (int ii=0; ii<digitalPinCount; ++ii)
+      {
+        if (pwmPins[pin] == YES)
+        {
+          analogWrite(ii, level);
+        }
+      }
       int now_ms = millis();
       if (now_ms - lastChange_ms > 4) {
         lastChange_ms = now_ms;
@@ -357,7 +396,13 @@ void testPWM(int pin)
         break;
       }
     }
-    pinMode(pin, INPUT);
+    for (int ii=0; ii<digitalPinCount; ++ii)
+    {
+      if (pwmPins[pin] == YES)
+      {
+        pinMode(ii, INPUT);
+      }
+    }
     if (pass)
     {
       pwmPins[pin] = PASS;
@@ -380,6 +425,7 @@ void setup()
     */
     pinMode(ii, INPUT_PULLUP);
   }
+  Serial.begin(9600);
 }
 
 void loop()
@@ -412,6 +458,8 @@ void loop()
   Serial.println("You will need a LED attached to a current limiting resistor");
   Serial.println("If you don't have one or do not know what I'm talking about");
   Serial.println("do not proceed");
+  Serial.println("WARNING - Touching output pins directly to ground will result in damage to your board");
+  Serial.println("WARNING - Driving more than about 8 LEDs simultaneously will result in damage to your board");
   Serial.println("Proceed with digital output tests?");
   Serial.println();
   boolean proceed = readBoolean(true);
